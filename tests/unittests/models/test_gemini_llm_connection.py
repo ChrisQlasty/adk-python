@@ -109,3 +109,53 @@ async def test_close(gemini_connection, mock_gemini_session):
   await gemini_connection.close()
 
   mock_gemini_session.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('tx_direction', ['input', 'output'])
+async def test_receive_transcript_finished(
+    gemini_connection, mock_gemini_session, tx_direction
+):
+  """Test receive_transcript_finished for input and output transcription."""
+
+  finished_tx = types.Transcription(finished=True)
+
+  class Msg:
+
+    def __init__(self):
+      self.server_content = mock.Mock()
+      sc = self.server_content
+      sc.model_turn = None
+      if tx_direction == 'input':
+        sc.input_transcription = finished_tx
+        sc.output_transcription = None
+      else:
+        sc.input_transcription = None
+        sc.output_transcription = finished_tx
+      sc.interrupted = False
+      sc.turn_complete = False
+      self.tool_call = None
+      self.session_resumption_update = None
+
+  async def gen():
+    yield Msg()
+
+  mock_gemini_session.receive = mock.Mock(return_value=gen())
+
+  responses = []
+  async for r in gemini_connection.receive():
+    responses.append(r)
+
+  if tx_direction == 'input':
+    tx_resps = [r for r in responses if r.input_transcription]
+  else:
+    tx_resps = [r for r in responses if r.output_transcription]
+
+  if tx_direction == 'input':
+    assert tx_resps, 'Excpected input transcription response'
+    assert tx_resps[0].input_transcription.finished is True
+    assert not tx_resps[0].input_transcription.text
+  else:
+    assert tx_resps, 'Expected output transcription response'
+    assert tx_resps[0].output_transcription.finished is True
+    assert not tx_resps[0].output_transcription.text
