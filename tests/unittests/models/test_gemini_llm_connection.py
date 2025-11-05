@@ -122,6 +122,7 @@ async def test_receive_transcript_finished(
 
   msg = mock.Mock()
   msg.tool_call = None
+  msg.usage_metadata = None
   msg.session_resumption_update = None
   msg.server_content.model_turn = None
   msg.server_content.interrupted = False
