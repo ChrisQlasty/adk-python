@@ -120,25 +120,21 @@ async def test_receive_transcript_finished(
 
   finished_tx = types.Transcription(finished=True)
 
-  class Msg:
-
-    def __init__(self):
-      self.server_content = mock.Mock()
-      sc = self.server_content
-      sc.model_turn = None
-      if tx_direction == 'input':
-        sc.input_transcription = finished_tx
-        sc.output_transcription = None
-      else:
-        sc.input_transcription = None
-        sc.output_transcription = finished_tx
-      sc.interrupted = False
-      sc.turn_complete = False
-      self.tool_call = None
-      self.session_resumption_update = None
+  msg = mock.Mock()
+  msg.tool_call = None
+  msg.session_resumption_update = None
+  msg.server_content.model_turn = None
+  msg.server_content.interrupted = False
+  msg.server_content.turn_complete = False
+  msg.server_content.input_transcription = (
+      finished_tx if tx_direction == 'input' else None
+  )
+  msg.server_content.output_transcription = (
+      finished_tx if tx_direction == 'output' else None
+  )
 
   async def gen():
-    yield Msg()
+    yield msg
 
   mock_gemini_session.receive = mock.Mock(return_value=gen())
 
@@ -146,19 +142,13 @@ async def test_receive_transcript_finished(
   async for r in gemini_connection.receive():
     responses.append(r)
 
-  if tx_direction == 'input':
-    tx_resps = [r for r in responses if r.input_transcription]
-  else:
-    tx_resps = [r for r in responses if r.output_transcription]
+  attr_name = f'{tx_direction}_transcription'
+  tx_resps = [r for r in responses if getattr(r, attr_name)]
+  assert tx_resps, f'Expected {tx_direction} transcription response'
 
-  if tx_direction == 'input':
-    assert tx_resps, 'Excpected input transcription response'
-    assert tx_resps[0].input_transcription.finished is True
-    assert not tx_resps[0].input_transcription.text
-  else:
-    assert tx_resps, 'Expected output transcription response'
-    assert tx_resps[0].output_transcription.finished is True
-    assert not tx_resps[0].output_transcription.text
+  transcription = getattr(tx_resps[0], attr_name)
+  assert transcription.finished is True
+  assert not transcription.text
 
 
 async def test_receive_usage_metadata_and_server_content(
