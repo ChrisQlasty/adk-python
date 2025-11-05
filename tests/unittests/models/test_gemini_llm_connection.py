@@ -160,6 +160,7 @@ async def test_receive_transcript_finished(
     assert tx_resps[0].output_transcription.finished is True
     assert not tx_resps[0].output_transcription.text
 
+
 async def test_receive_usage_metadata_and_server_content(
     gemini_connection, mock_gemini_session
 ):
@@ -196,7 +197,6 @@ async def test_receive_usage_metadata_and_server_content(
   mock_message.tool_call = None
   mock_message.session_resumption_update = None
 
-  
   async def mock_receive_generator():
     yield mock_message
 
