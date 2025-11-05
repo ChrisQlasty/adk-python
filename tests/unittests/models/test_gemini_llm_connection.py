@@ -196,6 +196,7 @@ async def test_receive_usage_metadata_and_server_content(
   mock_message.tool_call = None
   mock_message.session_resumption_update = None
 
+  
   async def mock_receive_generator():
     yield mock_message
 
