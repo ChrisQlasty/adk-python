@@ -181,13 +181,16 @@ class GeminiLlmConnection(BaseLlmConnection):
           # generation_complete, causing transcription to appear after
           # tool_call in the session log.
           if message.server_content.input_transcription:
-            if message.server_content.input_transcription.text:
-              self._input_transcription_text += (
-                  message.server_content.input_transcription.text
+            if (
+                new_input_transcription_chunk := message.server_content.input_transcription.text
+            ):
+              self._input_transcription_text = (
+                  f'{self._input_transcription_text} {new_input_transcription_chunk.strip()}'
+                  .strip()
               )
               yield LlmResponse(
                   input_transcription=types.Transcription(
-                      text=message.server_content.input_transcription.text,
+                      text=new_input_transcription_chunk,
                       finished=False,
                   ),
                   partial=True,
@@ -204,13 +207,16 @@ class GeminiLlmConnection(BaseLlmConnection):
               )
               self._input_transcription_text = ''
           if message.server_content.output_transcription:
-            if message.server_content.output_transcription.text:
-              self._output_transcription_text += (
-                  message.server_content.output_transcription.text
+            if (
+                new_output_transcription_chunk := message.server_content.output_transcription.text
+            ):
+              self._output_transcription_text = (
+                  f'{self._output_transcription_text} {new_output_transcription_chunk.strip()}'
+                  .strip()
               )
               yield LlmResponse(
                   output_transcription=types.Transcription(
-                      text=message.server_content.output_transcription.text,
+                      text=new_output_transcription_chunk,
                       finished=False,
                   ),
                   partial=True,
