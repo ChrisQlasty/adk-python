@@ -593,3 +593,101 @@ async def test_receive_handles_output_transcription_fragments(
   assert responses[2].output_transcription.text == 'How can I help?'
   assert responses[2].output_transcription.finished is True
   assert responses[2].partial is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('tx_direction', ['input', 'output'])
+@pytest.mark.parametrize(
+    'fragments',
+    [
+        ('Hello', 'world'),
+        ('Hello', ' world'),
+        ('Hello ', 'world'),
+    ],
+)
+async def test_receive_final_transcription_space_between_fragments(
+    gemini_connection, mock_gemini_session, tx_direction, fragments
+):
+  """Test receive final transcription fragments are joined with a space between words."""
+  fragment1, fragment2 = fragments
+
+  message1 = mock.Mock()
+  message1.usage_metadata = None
+  message1.server_content = mock.Mock()
+  message1.server_content.model_turn = None
+  message1.server_content.interrupted = False
+  message1.server_content.turn_complete = False
+  message1.server_content.generation_complete = False
+  message1.tool_call = None
+  message1.session_resumption_update = None
+  message1.server_content.input_transcription = (
+      types.Transcription(text=fragment1, finished=False)
+      if tx_direction == 'input'
+      else None
+  )
+  message1.server_content.output_transcription = (
+      types.Transcription(text=fragment1, finished=False)
+      if tx_direction == 'output'
+      else None
+  )
+
+  message2 = mock.Mock()
+  message2.usage_metadata = None
+  message2.server_content = mock.Mock()
+  message2.server_content.model_turn = None
+  message2.server_content.interrupted = False
+  message2.server_content.turn_complete = False
+  message2.server_content.generation_complete = False
+  message2.tool_call = None
+  message2.session_resumption_update = None
+  message2.server_content.input_transcription = (
+      types.Transcription(text=fragment2, finished=False)
+      if tx_direction == 'input'
+      else None
+  )
+  message2.server_content.output_transcription = (
+      types.Transcription(text=fragment2, finished=False)
+      if tx_direction == 'output'
+      else None
+  )
+
+  message3 = mock.Mock()
+  message3.usage_metadata = None
+  message3.server_content = mock.Mock()
+  message3.server_content.model_turn = None
+  message3.server_content.interrupted = False
+  message3.server_content.turn_complete = False
+  message3.server_content.generation_complete = False
+  message3.tool_call = None
+  message3.session_resumption_update = None
+  message3.server_content.input_transcription = (
+      types.Transcription(text=None, finished=True)
+      if tx_direction == 'input'
+      else None
+  )
+  message3.server_content.output_transcription = (
+      types.Transcription(text=None, finished=True)
+      if tx_direction == 'output'
+      else None
+  )
+
+  async def mock_receive_generator():
+    yield message1
+    yield message2
+    yield message3
+
+  receive_mock = mock.Mock(return_value=mock_receive_generator())
+  mock_gemini_session.receive = receive_mock
+
+  responses = [resp async for resp in gemini_connection.receive()]
+
+  # find the finished transcription response
+  attr_name = f'{tx_direction}_transcription'
+  finished_resps = [
+      r
+      for r in responses
+      if getattr(r, attr_name) and getattr(r, attr_name).finished
+  ]
+  assert finished_resps, 'Expected finished transcription response'
+  transcription = getattr(finished_resps[0], attr_name)
+  assert transcription.text == 'Hello world'
