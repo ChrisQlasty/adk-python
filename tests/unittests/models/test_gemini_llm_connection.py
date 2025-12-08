@@ -600,9 +600,11 @@ async def test_receive_handles_output_transcription_fragments(
 @pytest.mark.parametrize(
     'fragments',
     [
-        ('Hello', 'world'),
-        ('Hello', ' world'),
-        ('Hello ', 'world'),
+        ('That', "'s great"),
+        ("That'", 's great'),
+        ("That's", 'great'),
+        ("That's", ' great'),
+        ("That's ", 'great'),
     ],
 )
 async def test_receive_final_transcription_space_between_fragments(
@@ -690,4 +692,4 @@ async def test_receive_final_transcription_space_between_fragments(
   ]
   assert finished_resps, 'Expected finished transcription response'
   transcription = getattr(finished_resps[0], attr_name)
-  assert transcription.text == 'Hello world'
+  assert transcription.text == "That's great"
