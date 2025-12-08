@@ -30,6 +30,8 @@ logger = logging.getLogger('google_adk.' + __name__)
 RealtimeInput = Union[types.Blob, types.ActivityStart, types.ActivityEnd]
 from typing import TYPE_CHECKING
 
+PUNCTUATION_CHARS = {'.', ',', '!', '?', ';', ':', "'", '"', ')', ']', '}', '(', '[', '{'}
+
 if TYPE_CHECKING:
   from google.genai import live
 
@@ -184,10 +186,20 @@ class GeminiLlmConnection(BaseLlmConnection):
             if (
                 new_input_transcription_chunk := message.server_content.input_transcription.text
             ):
-              self._input_transcription_text = (
-                  f'{self._input_transcription_text} {new_input_transcription_chunk.strip()}'
-                  .strip()
+              existing = self._input_transcription_text
+              # Insert a space only when there is existing text and neither
+              # the new chunk starts with punctuation nor the existing text
+              # ends with punctuation.
+              conditional_space = (
+                  ' '
+                  if existing
+                  and not (
+                      new_input_transcription_chunk[0] in PUNCTUATION_CHARS
+                      or existing[-1] in PUNCTUATION_CHARS
+                  )
+                  else ''
               )
+              self._input_transcription_text = f'{existing}{conditional_space}{new_input_transcription_chunk.strip()}'.strip()
               yield LlmResponse(
                   input_transcription=types.Transcription(
                       text=new_input_transcription_chunk,
@@ -210,10 +222,20 @@ class GeminiLlmConnection(BaseLlmConnection):
             if (
                 new_output_transcription_chunk := message.server_content.output_transcription.text
             ):
-              self._output_transcription_text = (
-                  f'{self._output_transcription_text} {new_output_transcription_chunk.strip()}'
-                  .strip()
+              existing = self._output_transcription_text
+              # Insert a space only when there is existing text and neither
+              # the new chunk starts with punctuation nor the existing text
+              # ends with punctuation.
+              conditional_space = (
+                  ' '
+                  if existing
+                  and not (
+                      new_output_transcription_chunk[0] in PUNCTUATION_CHARS
+                      or existing[-1] in PUNCTUATION_CHARS
+                  )
+                  else ''
               )
+              self._output_transcription_text = f'{existing}{conditional_space}{new_output_transcription_chunk.strip()}'.strip()
               yield LlmResponse(
                   output_transcription=types.Transcription(
                       text=new_output_transcription_chunk,
