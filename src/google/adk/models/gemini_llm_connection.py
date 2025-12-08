@@ -30,7 +30,7 @@ logger = logging.getLogger('google_adk.' + __name__)
 RealtimeInput = Union[types.Blob, types.ActivityStart, types.ActivityEnd]
 from typing import TYPE_CHECKING
 
-PUNCTUATION_CHARS = {'.', ',', '!', '?', ';', ':', "'", '"', ')', ']', '}', '(', '[', '{'}
+PUNCTUATION_CHARS = {'.', '!', '?', ';', ':', "'"}
 
 if TYPE_CHECKING:
   from google.genai import live
@@ -187,17 +187,18 @@ class GeminiLlmConnection(BaseLlmConnection):
                 new_input_transcription_chunk := message.server_content.input_transcription.text
             ):
               existing = self._input_transcription_text
-              # Insert a space only when there is existing text and neither
-              # the new chunk starts with punctuation nor the existing text
-              # ends with punctuation.
+              # Insert a space when joining fragments except when the new
+              # chunk starts with a punctuation character that should attach
+              # to the previous token, or the existing text ends with an
+              # apostrophe.
               conditional_space = (
-                  ' '
-                  if existing
-                  and not (
-                      new_input_transcription_chunk[0] in PUNCTUATION_CHARS
-                      or existing[-1] in PUNCTUATION_CHARS
-                  )
-                  else ''
+                ' '
+                if existing
+                and not (
+                  new_input_transcription_chunk[0] in PUNCTUATION_CHARS
+                  or existing.endswith("'")
+                )
+                else ''
               )
               self._input_transcription_text = f'{existing}{conditional_space}{new_input_transcription_chunk.strip()}'.strip()
               yield LlmResponse(
@@ -223,17 +224,18 @@ class GeminiLlmConnection(BaseLlmConnection):
                 new_output_transcription_chunk := message.server_content.output_transcription.text
             ):
               existing = self._output_transcription_text
-              # Insert a space only when there is existing text and neither
-              # the new chunk starts with punctuation nor the existing text
-              # ends with punctuation.
+              # Insert a space when joining fragments except when the new
+              # chunk starts with a punctuation character that should attach
+              # to the previous token, or the existing text ends with an
+              # apostrophe.
               conditional_space = (
-                  ' '
-                  if existing
-                  and not (
-                      new_output_transcription_chunk[0] in PUNCTUATION_CHARS
-                      or existing[-1] in PUNCTUATION_CHARS
-                  )
-                  else ''
+                ' '
+                if existing
+                and not (
+                  new_output_transcription_chunk[0] in PUNCTUATION_CHARS
+                  or existing.endswith("'")
+                )
+                else ''
               )
               self._output_transcription_text = f'{existing}{conditional_space}{new_output_transcription_chunk.strip()}'.strip()
               yield LlmResponse(
