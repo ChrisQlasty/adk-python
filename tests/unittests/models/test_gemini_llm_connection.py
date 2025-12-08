@@ -600,18 +600,24 @@ async def test_receive_handles_output_transcription_fragments(
 @pytest.mark.parametrize(
     'fragments',
     [
-        ('That', "'s great"),
-        ("That'", 's great'),
-        ("That's", 'great'),
-        ("That's", ' great'),
-        ("That's ", 'great'),
+        ('That', "'s great", "That's great"),
+        ("That'", 's great', "That's great"),
+        ("That's", 'great', "That's great"),
+        ("That's", ' great', "That's great"),
+        ("That's ", 'great', "That's great"),
+        ("Great", '! Good to hear', 'Great! Good to hear'),
+        ("Great!", 'Good to hear', 'Great! Good to hear'),
+        ("Great! ", 'Good to hear', 'Great! Good to hear'),
+        ("Great! Good", 'to hear', 'Great! Good to hear'),
+        ("Great! Good ", 'to hear', 'Great! Good to hear'),
+        ("Great! Good", ' to hear', 'Great! Good to hear'),
     ],
 )
 async def test_receive_final_transcription_space_between_fragments(
     gemini_connection, mock_gemini_session, tx_direction, fragments
 ):
   """Test receive final transcription fragments are joined with a space between words."""
-  fragment1, fragment2 = fragments
+  fragment1, fragment2, expected = fragments
 
   message1 = mock.Mock()
   message1.usage_metadata = None
@@ -692,4 +698,4 @@ async def test_receive_final_transcription_space_between_fragments(
   ]
   assert finished_resps, 'Expected finished transcription response'
   transcription = getattr(finished_resps[0], attr_name)
-  assert transcription.text == "That's great"
+  assert transcription.text == expected
