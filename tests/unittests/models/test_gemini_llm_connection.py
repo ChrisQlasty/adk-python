@@ -624,65 +624,31 @@ async def test_receive_final_transcription_space_between_fragments(
   """Test receive final transcription fragments are joined with a space between words."""
   fragment1, fragment2, expected = fragments
 
-  message1 = mock.Mock()
-  message1.usage_metadata = None
-  message1.server_content = mock.Mock()
-  message1.server_content.model_turn = None
-  message1.server_content.interrupted = False
-  message1.server_content.turn_complete = False
-  message1.server_content.generation_complete = False
-  message1.tool_call = None
-  message1.session_resumption_update = None
-  message1.server_content.input_transcription = (
-      types.Transcription(text=fragment1, finished=False)
-      if tx_direction == 'input'
-      else None
-  )
-  message1.server_content.output_transcription = (
-      types.Transcription(text=fragment1, finished=False)
-      if tx_direction == 'output'
-      else None
-  )
+  def _create_mock_transcription_message(
+      text: str | None, finished: bool, direction: str
+  ) -> mock.Mock:
+    msg = mock.Mock()
+    msg.usage_metadata = None
+    msg.server_content = mock.Mock()
+    msg.server_content.model_turn = None
+    msg.server_content.interrupted = False
+    msg.server_content.turn_complete = False
+    msg.server_content.generation_complete = False
+    msg.tool_call = None
+    msg.session_resumption_update = None
 
-  message2 = mock.Mock()
-  message2.usage_metadata = None
-  message2.server_content = mock.Mock()
-  message2.server_content.model_turn = None
-  message2.server_content.interrupted = False
-  message2.server_content.turn_complete = False
-  message2.server_content.generation_complete = False
-  message2.tool_call = None
-  message2.session_resumption_update = None
-  message2.server_content.input_transcription = (
-      types.Transcription(text=fragment2, finished=False)
-      if tx_direction == 'input'
-      else None
-  )
-  message2.server_content.output_transcription = (
-      types.Transcription(text=fragment2, finished=False)
-      if tx_direction == 'output'
-      else None
-  )
+    transcription = types.Transcription(text=text, finished=finished)
+    if direction == 'input':
+      msg.server_content.input_transcription = transcription
+      msg.server_content.output_transcription = None
+    else:
+      msg.server_content.input_transcription = None
+      msg.server_content.output_transcription = transcription
+    return msg
 
-  message3 = mock.Mock()
-  message3.usage_metadata = None
-  message3.server_content = mock.Mock()
-  message3.server_content.model_turn = None
-  message3.server_content.interrupted = False
-  message3.server_content.turn_complete = False
-  message3.server_content.generation_complete = False
-  message3.tool_call = None
-  message3.session_resumption_update = None
-  message3.server_content.input_transcription = (
-      types.Transcription(text=None, finished=True)
-      if tx_direction == 'input'
-      else None
-  )
-  message3.server_content.output_transcription = (
-      types.Transcription(text=None, finished=True)
-      if tx_direction == 'output'
-      else None
-  )
+  message1 = _create_mock_transcription_message(fragment1, False, tx_direction)
+  message2 = _create_mock_transcription_message(fragment2, False, tx_direction)
+  message3 = _create_mock_transcription_message(None, True, tx_direction)
 
   async def mock_receive_generator():
     yield message1
