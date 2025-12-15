@@ -16,11 +16,13 @@ from __future__ import annotations
 
 import logging
 from typing import AsyncGenerator
+from typing import TYPE_CHECKING
 from typing import Union
 
 from google.genai import types
 
 from ..utils.context_utils import Aclosing
+from ..utils.transcription_utils import join_fragment
 from ..utils.variant_utils import GoogleLLMVariant
 from .base_llm_connection import BaseLlmConnection
 from .llm_response import LlmResponse
@@ -28,9 +30,7 @@ from .llm_response import LlmResponse
 logger = logging.getLogger('google_adk.' + __name__)
 
 RealtimeInput = Union[types.Blob, types.ActivityStart, types.ActivityEnd]
-from typing import TYPE_CHECKING
 
-PUNCTUATION_CHARS = {'.', '!', '?', ';', ':', "'"}
 
 if TYPE_CHECKING:
   from google.genai import live
@@ -187,20 +187,9 @@ class GeminiLlmConnection(BaseLlmConnection):
                 new_input_transcription_chunk := message.server_content.input_transcription.text
             ):
               existing = self._input_transcription_text
-              # Insert a space when joining fragments except when the new
-              # chunk starts with a punctuation character that should attach
-              # to the previous token, or the existing text ends with an
-              # apostrophe.
-              conditional_space = (
-                ' '
-                if existing
-                and not (
-                  new_input_transcription_chunk[0] in PUNCTUATION_CHARS
-                  or existing.endswith("'")
-                )
-                else ''
+              self._input_transcription_text = join_fragment(
+                  existing, new_input_transcription_chunk
               )
-              self._input_transcription_text = f'{existing}{conditional_space}{new_input_transcription_chunk.strip()}'.strip()
               yield LlmResponse(
                   input_transcription=types.Transcription(
                       text=new_input_transcription_chunk,
@@ -224,20 +213,9 @@ class GeminiLlmConnection(BaseLlmConnection):
                 new_output_transcription_chunk := message.server_content.output_transcription.text
             ):
               existing = self._output_transcription_text
-              # Insert a space when joining fragments except when the new
-              # chunk starts with a punctuation character that should attach
-              # to the previous token, or the existing text ends with an
-              # apostrophe.
-              conditional_space = (
-                ' '
-                if existing
-                and not (
-                  new_output_transcription_chunk[0] in PUNCTUATION_CHARS
-                  or existing.endswith("'")
-                )
-                else ''
+              self._output_transcription_text = join_fragment(
+                  existing, new_output_transcription_chunk
               )
-              self._output_transcription_text = f'{existing}{conditional_space}{new_output_transcription_chunk.strip()}'.strip()
               yield LlmResponse(
                   output_transcription=types.Transcription(
                       text=new_output_transcription_chunk,
